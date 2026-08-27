@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon"
+          type="image/svg+xml"
+          href="data:image/svg+xml;base64,@FAVICON@" />
+
+    <title>
+      CharmBypass: got that transit equity
+    </title>
+
+    <style>
+      body {
+        /* For consistency with the SVG */
+        font-family: sans-serif;
+      }
+
+      fieldset {
+        margin-top: 1em;
+        padding-top: 1em;
+      }
+
+      input[type=submit] {
+        margin-top: 1em;
+        margin-bottom: 1em;
+      }
+
+      legend {
+        font-weight: bold;
+      }
+
+      /* Display form errors for the one browser that doesn't support
+       * them natively, mobile Firefox. We use "visibility" to toggle
+       * it on and off, but "display" to hide it completely in non-
+       * stupid web browsers. */
+      #marc-form-errors {
+        color: #a00;
+        visibility: hidden;
+        display: none;
+      }
+
+      svg {
+        /* Set the height to 100% of the screen, which we'll keep; and the
+         * initial position to (0,0), which we're going to change
+         * every time the window is resized, because the exact amount
+         * that we have to slide the SVG to the left to get the ticket
+         * into the center will change. */
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+
+        /* Hide everything by default. We only show it once the user has
+         * submitted the menu form */
+        display: none;
+      }
+
+      /* Night-time color for the sky (day is default). */
+      #sky.night {
+        fill: #143b66;
+      }
+
+      /* The blinking fade in/out animation for the ticket date and time */
+      @keyframes blink {
+        25% { opacity: 0.5; }
+        50% { opacity: 0;   }
+        75% { opacity: 0.5; }
+      }
+
+      #tickettime, #ticketdate {
+        /* 300 two-second blinks is ten minutes */
+        animation: blink 2s linear 300;
+      }
+
+      /* Define, load, and specify the custom font we use for the ticket
+       * date, time, and service name. */
+      @font-face {
+        font-family: "CharmBypass Regular";
+        src:
+          url("data:font/woff2;base64,@CBPREGULAR@") format("woff2")
+      }
+
+      #origindest, #tickettime, #ticketdate, #zone {
+        font-family: "CharmBypass Regular", sans-serif;
+      }
+
+      @font-face {
+        font-family: "CharmBypass Bold";
+        src:
+          url("data:font/woff2;base64,@CBPBOLD@") format("woff2")
+      }
+
+      #codetext, #serviceid, #servicename {
+        font-family: "CharmBypass Bold", sans-serif;
+      }
+
+      /* Service-based ticket colors */
+      #ticket.commuter_bus #codebg,
+      #ticket.commuter_bus #tickettopbg {
+        fill: #070;
+      }
+      #ticket.marc_train #codebg,
+      #ticket.marc_train #tickettopbg {
+        fill: #003b75;
+      }
+
+      /* Service-based ticket size/position adjustment */
+      #ticket.commuter_bus,
+      #ticket.marc_train {
+        transform: translate(0, -30px);
+      }
+      #ticket.commuter_bus #ticketbottombg,
+      #ticket.marc_train #ticketbottombg {
+        transform: scale(1, 1.05);
+      }
+
+      /************************/
+      /* Scrolling animations */
+      /************************/
+
+      /* Bus */
+      @keyframes busroll {
+        from { transform: translateX(0%);    }
+        to   { transform: translateX(-100%); }
+      }
+
+      #bus {
+        animation: busroll 15s linear infinite;
+      }
+
+
+      /* Tram */
+      @keyframes tramroll {
+        from { transform: translateX(0%);   }
+        to   { transform: translateX(100%); }
+      }
+
+      #tram {
+        animation: tramroll 15s linear infinite;
+      }
+
+
+      /* Train */
+      @keyframes trainroll {
+        from { transform: translateX(0%);   }
+        to   { transform: translateX(100%); }
+      }
+
+      #train {
+        animation: trainroll 10s linear infinite;
+      }
+
+
+      /* Clouds */
+      @keyframes cloudsfloat {
+        from { transform: translateX(0%);   }
+        to   { transform: translateX(-50%); }
+      }
+
+      #clouds {
+        animation: cloudsfloat 25s linear infinite;
+      }
+
+      @keyframes cloudscopyfloat {
+        from { transform: translateX(0%);   }
+        to   { transform: translateX(-50%); }
+      }
+
+      #cloudscopy {
+        animation: cloudscopyfloat 25s linear infinite;
+      }
+
+
+      /* Trees */
+      @keyframes treespass {
+        from { transform: translateX(0%);   }
+        to   { transform: translateX(-50%); }
+      }
+
+      #trees {
+        /* The trees move a little faster than the clouds */
+        animation: treespass 16s linear infinite;
+      }
+
+      @keyframes treescopypass {
+        from { transform: translateX(0%);   }
+        to   { transform: translateX(-50%); }
+      }
+
+      #treescopy {
+        /* The trees move a little faster than the clouds */
+        animation: treescopypass 16s linear infinite;
+      }
+
+
+      /* City skyline */
+      @keyframes cityscroll {
+        from { transform: translateX(0%);   }
+        to   { transform: translateX(-50%); }
+      }
+
+      #city {
+        /* The city moves faster than the clouds but slower
+         * than the trees */
+        animation: cityscroll 20s linear infinite;
+      }
+
+      @keyframes citycopyscroll {
+        from { transform: translateX(0%);   }
+        to   { transform: translateX(-50%); }
+      }
+
+      #citycopy {
+        /* The city moves faster than the clouds but slower
+         * than the trees */
+        animation: citycopyscroll 20s linear infinite;
+      }
+
+      /*****************/
+      /* Ticket sizing */
+      /*****************/
+
+      #ticketbottombg {
+        transform-box: fill-box; /* don't reposition on scale */
+        transform-origin: top; /* scale down only */
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="menu">
+      <h1>CharmBypass</h1>
+      <p><strong>got that <em>transit equity</em></strong></p>
+
+      <form>
+        <fieldset>
+          <legend>Local Bus, Light Rail, or Metro</legend>
+          <div>
+            <label for="code1">
+              Daily security code (optional):
+            </label>
+            <input id="code1"
+                   name="code" value=""
+                   type="text"
+                   size="2"
+                   minlength="2"
+                   maxlength="2"
+                   pattern="[a-zA-Z0-9]*" />
+          </div>
+          <input type="hidden" name="service" value="1" />
+          <input type="submit" name="go" value="Generate Ticket" />
+        </fieldset>
+      </form>
+      <form>
+        <fieldset>
+          <legend>Commuter Bus</legend>
+          <input type="hidden" name="service" value="2" />
+
+          <div>
+            <label for="code2">
+              Daily security code (optional):
+            </label>
+            <input id="code2"
+                   name="code" value=""
+                   type="text"
+                   size="2"
+                   minlength="2"
+                   maxlength="2"
+                   pattern="[a-zA-Z0-9]*" />
+          </div>
+
+          <p>
+            Zone<sup>&dagger;</sup>:
+          </p>
+          <div>
+            <input type="radio" required
+                   name="zone"
+                   id="zone1"
+                   value="Zone 1" />
+            <label for="zone1">Zone 1</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="zone"
+                   id="zone2"
+                   value="Zone 2" />
+            <label for="zone2">Zone 2</label>
+          </div>
+          <div>
+            <input type="radio" required checked
+                   name="zone"
+                   id="zone3"
+                   value="Zone 3" />
+            <label for="zone3">Zone 3</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="zone"
+                   id="zone4"
+                   value="Zone 4" />
+            <label for="zone4">Zone 4</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="zone"
+                   id="zone5"
+                   value="Zone 5" />
+            <label for="zone5">Zone 5</label>
+          </div>
+
+          <input type="submit" name="go" value="Generate Ticket" />
+
+          <p>
+            <sup>&dagger;</sup>
+            On the MTA's PDF schedule for your route
+          </p>
+        </fieldset>
+      </form>
+      <form>
+        <fieldset>
+          <legend>MARC Train</legend>
+
+          <div>
+            <label for="code3">
+              Daily security code (optional):
+            </label>
+            <input id="code3"
+                   name="code" value=""
+                   type="text"
+                   size="2"
+                   minlength="2"
+                   maxlength="2"
+                   pattern="[a-zA-Z0-9]*" />
+          </div>
+
+          <p>Origin:</p>
+          <div>
+            <input type="radio" required checked
+                   name="origin"
+                   id="origin_BAL"
+                   value="BAL" />
+            <label for="origin_BAL">Baltimore/Penn (Penn Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="origin"
+                   id="origin_BCA"
+                   value="BCA" />
+            <label for="origin_BCA">Baltimore/Camden (Camden Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="origin"
+                   id="origin_BWE"
+                   value="BWE" />
+            <label for="origin_BWE">Bowie State (Penn Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="origin"
+                   id="origin_BWI"
+                   value="BWI" />
+            <label for="origin_BWI">BWI Airport (Penn Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="origin"
+                   id="origin_CPK"
+                   value="CPK" />
+            <label for="origin_CPK">College Park (Camden Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="origin"
+                   id="origin_FRC"
+                   value="FRC" />
+            <label for="origin_FRC">Frederick (Brunswick Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="origin"
+                   id="origin_HAE"
+                   value="HAE" />
+            <label for="origin_HAE">Halethorpe (Penn Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="origin"
+                   id="origin_NCR"
+                   value="NCR" />
+            <label for="origin_NCR">New Carrollton (Penn Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="origin"
+                   id="origin_SEB"
+                   value="SEB" />
+            <label for="origin_SEB">Seabrook (Penn Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="origin"
+                   id="origin_WAS"
+                   value="WAS" />
+            <label for="origin_WAS">Washington D.C.</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="origin"
+                   id="origin_WBL"
+                   value="WBL" />
+            <label for="origin_WBL">West Baltimore (Penn Line)</label>
+          </div>
+
+          <p>Destination:</p>
+          <div>
+            <input type="radio" required
+                   name="destination"
+                   id="destination_BAL"
+                   value="BAL" />
+            <label for="destination_BAL">Baltimore/Penn (Penn Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="destination"
+                   id="destination_BCA"
+                   value="BCA" />
+            <label for="destination_BCA">Baltimore/Camden (Camden Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="destination"
+                   id="destination_BWE"
+                   value="BWE" />
+            <label for="destination_BWE">Bowie State (Penn Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="destination"
+                   id="destination_BWI"
+                   value="BWI" />
+            <label for="destination_BWI">BWI Airport (Penn Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="destination"
+                   id="destination_CPK"
+                   value="CPK" />
+            <label for="destination_CPK">College Park (Camden Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="destination"
+                   id="destination_FRC"
+                   value="FRC" />
+            <label for="destination_FRC">Frederick (Brunswick Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="destination"
+                   id="destination_HAE"
+                   value="HAE" />
+            <label for="destination_HAE">Halethorpe (Penn Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="destination"
+                   id="destination_NCR"
+                   value="NCR" />
+            <label for="destination_NCR">New Carrollton (Penn Line)</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="destination"
+                   id="destination_SEB"
+                   value="SEB" />
+            <label for="destination_SEB">Seabrook (Penn Line)</label>
+          </div>
+          <div>
+            <input type="radio" required checked
+                   name="destination"
+                   id="destination_WAS"
+                   value="WAS" />
+            <label for="destination_WAS">Washington D.C.</label>
+          </div>
+          <div>
+            <input type="radio" required
+                   name="destination"
+                   id="destination_WBL"
+                   value="WBL" />
+            <label for="destination_WBL">West Baltimore (Penn Line)</label>
+          </div>
+
+          <p id="marc-form-errors">OK</p>
+
+          <input type="hidden" name="service" value="3" />
+          <input type="submit"
+                 name="go"
+                 id="marc-submit"
+                 value="Generate Ticket" />
+        </fieldset>
+      </form>
+    </div>
+
+    @SVGDATA@
+
+    <script>
+      /* Service identifiers. It's easier to pass them around as
+       * integers since we compare them in a few places and the
+       * formatting of the string names would otherwise be messy.
+       *
+       * Must match the values on the hidden name="service" form
+       * inputs!
+       */
+      const BALTIMORE_LINK = 1;
+      const COMMUTER_BUS = 2;
+      const MARC_TRAIN = 3;
+
+      /**
+        * Shrink the ticket if necessary to fit on the screen.
+        *
+        * On devices where the screen itself is smaller than our
+        * ticket, the space around the edges is absent. For reasons,
+        * we expect the user to have his mobile browser in full-screen
+        * portrait mode; and when he does, the ticket should take up
+        * about 80% of the available width.
+        */
+      function resize_ticket() {
+        const t = document.getElementById("ticket");
+        const ticket_width = t.getBoundingClientRect().width;
+        const window_width = document.documentElement.clientWidth;
+        const max_ticket_width = 0.8*window_width;
+
+        if (ticket_width > max_ticket_width) {
+          const scale_factor = max_ticket_width/ticket_width;
+          t.style.transform = `scale(${scale_factor})`;
+        }
+      }
+
+      /**
+       * Center the ticket within the browser by translating the SVG
+       * until the ticket and the viewport centerlines coincide.
+       */
+      function center_ticket() {
+        /* We're relying on the SVG being the full height of the
+         * viewport already, and on the aspect ratio being
+         * preserved. First, find the center of the ticket. */
+        const r = document.getElementById("ticket").getBoundingClientRect();
+        const c = r.left + (r.width / 2);
+
+        /* That's the center-line of the ticket. We want to move it to
+         * the center-line of the viewport. */
+        const vc = document.documentElement.clientWidth / 2;
+
+        /* This is how much we need to translate the SVG */
+        const hdelta = vc - c;
+
+        /* But before we can set the absolute left-coordinate of the
+         * SVG, we need to know where it is now. Note: without the
+         * "px" this doesn't default to pixels like CSS does. */
+        const svg = document.querySelector("svg");
+        svg.style.left = (svg.getBoundingClientRect().left + hdelta) + "px";
+      }
+
+
+      /**
+       * Set the service name from the querystring if it's there.
+       * Otherwise, leave it at the default of "BaltimoreLink".
+       *
+       * Set the ticket CSS class at the same time, since there are a
+       * few other ticket elements that effectively depend on the
+       * service name.
+       */
+      function set_service_name() {
+        const params = new URLSearchParams(document.location.search);
+        const svc = parseInt(params.get("service"));
+        let sn1; /* string service name, line 1 */
+        let sn2; /* string service name, line 2 */
+        let sclass; /* service-specific class name */
+
+        switch (svc) {
+          case COMMUTER_BUS:
+            sn1 = "Commuter";
+            sn2 = "Bus";
+            sclass = "commuter_bus";
+            break;
+          case MARC_TRAIN:
+            sn1 = "MARC";
+            sn2 = "Train";
+            sclass = "marc_train";
+            break;
+          default:
+            /* "Baltimore Link" is the default */
+            return;
+        }
+
+        const line1 = document.getElementById("snline1");
+        const line2 = document.getElementById("snline2");
+        const t = document.getElementById("ticket");
+        line1.textContent = sn1;
+        line2.textContent = sn2;
+        t.classList.add(sclass);
+      }
+
+
+      /**
+       * Set the zone from the "zone" parameter, and unhide it.
+       *
+       * This is relevant for the Commuter Bus only. The zone for the
+       * MARC Train no longer appears on the ticket.
+       */
+      function set_zone() {
+        const params = new URLSearchParams(document.location.search);
+
+        if (params.get("zone")) {
+          const z = document.getElementById("zone");
+          z.textContent = params.get("zone");
+          z.style.display = "block"; /* hidden by default */
+        }
+      }
+
+
+      /**
+       * Set the security code from the querystring if it was given;
+       * otherwise generate a random code.
+       */
+      function set_code() {
+        const ct = document.getElementById("codetext");
+
+        /* Get the "code" from the querystring if it's there */
+        const params = new URLSearchParams(document.location.search);
+        if (params.get("code")) {
+          ct.textContent = params.get("code").toUpperCase();
+        }
+        else {
+          /* Otherwise, use a random code */
+          const bucket = ["0","1","2","3","4","5","6","7","8","9",
+                          "A","B","C","D","E","F","G","H","I","J",
+                          "K","L","M","N","O","P","Q","R","S","T",
+                          "U","V","W","X","Y","Z"];
+
+          /* Two random ints between 0 and 35 */
+          const i1 = Math.floor(Math.random() * 36);
+          const i2 = Math.floor(Math.random() * 36);
+          const d1 = bucket[i1];
+          const d2 = bucket[i2];
+          ct.textContent = d1 + d2;
+        }
+
+        /* If we're really unlucky, a code like "WW" can overflow
+         * the box (but by only a little). If the code text is wider
+         * than the box box, reduce its font size. */
+        const bg = document.getElementById("codebg");
+
+        /* First, find the center of the red box */
+        const r1 = bg.getBoundingClientRect();
+        const r2 = ct.getBoundingClientRect();
+        if (r2.width >= r1.width) {
+          /* scale factor chosen so that if e.g. the text is exactly the width
+           * of the box, we'll reduce the font size by 10% */
+          const sf = 0.9 * r1.width / r2.width;
+          const newsize = parseFloat(ct.getAttribute("font-size")) * sf;
+          ct.setAttribute("font-size", newsize);
+        }
+      }
+
+      /**
+       * Center the security code within its container.
+       *
+       * Some codes like "II" and "WW" can take up wildly different
+       * amounts of horizontal space, but they should always be
+       * centered inside their little red box. This turns out to be
+       * harder than it sounds because we can only find the width of
+       * the code in browser coordinates, whereas its "x" coordinate
+       * is in SVG coordinates. Anyway, we do it.
+       */
+      function center_code() {
+        /* Center the security code inside its red box */
+        const ct = document.getElementById("codetext");
+        const bg = document.getElementById("codebg");
+
+        /* First, find the center of the red box */
+        const r1 = bg.getBoundingClientRect();
+        const c1 = r1.left + (r1.width / 2);
+
+        /* Now the center of the code text */
+        const r2 = ct.getBoundingClientRect();
+        const c2 = r2.left + (r2.width / 2);
+
+        /* What do we add to c2 to make it equal to c1? */
+        const hdelta = c1 - c2;
+
+        /* We've measured everything so far in "client rect"
+         * coordinates, because that's the only available measurement
+         * we have for the width of the <text> element. But when we
+         * reposition that <text> element, it will be by adjusting its
+         * "x" attribute, and that attribute uses a different coordinate
+         * system than the client rect does. Specifically, "x" refers to
+         * an offset within the SVG's coordinate system, and the client
+         * rect coordinates are pixels on-screen. To convert between the
+         * two, we can take the "width" attribute of the background
+         * element and compare it to the width of the background
+         * element's client rect. Since the size of the background is
+         * fixed, this should give us a multiplier that turns client rect
+         * distances (what we have) into SVG distances (what we want). */
+        const client_width = codebg.getBoundingClientRect().width;
+        const svg_width = parseFloat(codebg.getAttribute("width"));
+
+        /* Convert hdelta from client rect to SVG coordinates */
+        const svg_hdelta = hdelta * (svg_width / client_width);
+
+        /* Since this <text> element has an "x" attribute it's easier for
+         * us to shift that than it is to mess with the "left" style. */
+        ct.setAttribute("x", parseFloat(ct.getAttribute("x")) + svg_hdelta);
+      }
+
+      /**
+       * Set the ticket's activation date and time.
+       */
+      function set_ticket_activation_time() {
+        /* There are two parameters, time and date, that we store in one
+         * underlying "date" variable. */
+        const date = new Date();
+        const tt = document.getElementById("tickettime");
+        const td = document.getElementById("ticketdate");
+        const dateopts = {
+          day:   "2-digit",
+          month: "2-digit",
+          year:  "2-digit"
+        };
+        tt.textContent = date.toLocaleTimeString();
+        td.textContent = date.toLocaleDateString("en-US", dateopts);
+      }
+
+
+      /**
+       * Swap day/night colors by adding/removing the "night" class
+       * to/from the sky element.
+       */
+      function swap_day_night() {
+        const sky = document.getElementById("sky");
+
+        if (sky.classList.contains("night")) {
+          sky.classList.remove("night");
+        }
+        else {
+          sky.classList.add("night");
+        }
+      }
+
+
+      /**
+       * Set the origin and destination for the MARC Train if they
+       * were provided, and unhide them if so.
+       */
+      function set_marc_origin_destination() {
+        const params = new URLSearchParams(document.location.search);
+        if (!params.get("origin") || !params.get("destination")) {
+          return;
+        }
+
+        const src = params.get("origin");
+        const dest = params.get("destination");
+
+        /* origindest contains both the origin and destination */
+        const origindest = document.getElementById("origindest");
+
+        const origin = document.getElementById("origin");
+        const destination = document.getElementById("destination");
+
+        origin.textContent = params.get("origin");
+        destination.textContent = params.get("destination");
+
+        origindest.style.display = "block"; /* hidden by default */
+      }
+
+
+      /**
+       * Hide the menu and display the ticket. This is what happens
+       * when you submit the form.
+       */
+      function go() {
+        /* To create our "window" onto the scene, we're going to slide the
+         * SVG off the left-hand side of the screen, and we don't want
+         * scroll bars to appear. */
+        document.body.style.overflow = "hidden";
+        document.body.style.margin = "0";
+        document.body.style.padding = "0";
+
+        const svg = document.querySelector("svg");
+        const menu = document.getElementById("menu");
+        svg.style.display = "initial";
+        menu.style.display = "none";
+      }
+
+      /**
+       * Determine if the user agent is mobile Firefox.
+       */
+      function ua_is_mobile_ff() {
+        const ua = navigator.userAgent.toLowerCase();
+        return (ua.includes("firefox") && ua.includes("mobile"));
+      }
+
+      /**
+       * Validate the MARC form's origin/destination.
+       *
+       * We don't want the user to be able to choose a pair of stops that
+       * aren't actually connected by the same MARC line. If we don't have
+       * zone information for the (origin,destination) pair, that indicates
+       * that it's probably not a valid choice; otherwise I would have
+       * filled in the information from the CharmPass app already.
+       *
+       * All browsers except mobile Firefox let us call setCustomValidity()
+       * to provide an error message that is displayed if the user tries
+       * to submit invalid choices. But amazingly, mobile Firefox does not:
+       *
+       *   https://bugzilla.mozilla.org/show_bug.cgi?id=1510450
+       *
+       * Instead we have to work around it (in that one browser) by
+       * showing/hiding a paragraph that we fill with the errors.
+       */
+      function validate_origin_destination(event) {
+        const origins = document.getElementsByName("origin");
+        const destinations = document.getElementsByName("destination");
+        const mfe = document.getElementById("marc-form-errors");
+        const marcsubmit = document.getElementById("marc-submit");
+
+        if (ua_is_mobile_ff()) {
+          /* Even though this is only for one browser, empty paragraphs
+           * are handled inconsistently and should be avoided as a rule.
+           * So, we make it say "OK" before we hide it. */
+          mfe.textContent = "OK";
+          mfe.style.visibility = "hidden";
+          marcsubmit.disabled = false;
+        }
+
+        let src = null;
+        let dest = null;
+        origins.forEach((x) => { if (x.checked) src = x; })
+        destinations.forEach((x) => {
+          if (x.checked) dest = x;
+
+          /* clear all errors before possibly setting one */
+          x.setCustomValidity('');
+        })
+
+        if (src.value === dest.value) {
+          let err = "Origin and destination are the same";
+          dest.setCustomValidity(err);
+
+          if (ua_is_mobile_ff()) {
+            mfe.textContent = err;
+            mfe.style.visibility = "visible";
+            marcsubmit.disabled = true;
+          }
+        }
+      }
+
+      /*****************************************************/
+      /* Add event handlers for all of the functions above */
+      /*****************************************************/
+
+      const params = new URLSearchParams(document.location.search);
+      if (params.get("go")) {
+        /* First unhide the SVG (swap it with the form) */
+        window.addEventListener("load", go);
+
+        /* Resize/center the ticket once when the page has loaded */
+        window.addEventListener("load", resize_ticket);
+        window.addEventListener("load", center_ticket);
+
+        /* Re-size and re-center the ticket whenever the window is
+         * resized as well */
+        window.addEventListener("resize", resize_ticket);
+        window.addEventListener("resize", center_ticket);
+
+        /* Set the service name when the page has loaded */
+        window.addEventListener("load", set_service_name);
+
+        /* Set the security code text when the page has loaded */
+        window.addEventListener("load", set_code);
+
+        /* Center the security code text when the page has loaded; in
+         * particular, after we set the code. */
+        window.addEventListener("load", center_code);
+
+        /* Set the ticket activation date/time upon page load */
+        window.addEventListener("load", set_ticket_activation_time);
+
+        /* Set the MARC Train origin and destination, if applicable */
+        window.addEventListener("load", set_marc_origin_destination);
+
+        /* Set the zone, if applicable (Commuter Bus only) */
+        window.addEventListener("load", set_zone);
+
+        /* Swap colors when the screen is tapped */
+        document.body.addEventListener("click", swap_day_night);
+
+        /* Dummy handler to prevent taps on the ticket from
+         * swapping day and night. Events bubble "up" by default
+         * so, even though the QR code is part of the ticket,
+         * taps on the QR should still be handled. */
+        document.getElementById("ticket").addEventListener(
+          "click",
+          event => { event.stopPropagation(); }
+        );
+      }
+      else {
+        /* If we haven't submitted the form yet, set up change handlers
+         * for the origin/destination radio buttons that validate that
+         * the origin and destination are on the same line. */
+        document.getElementsByName("origin").forEach(
+         (x) => x.addEventListener("change", validate_origin_destination)
+        );
+        document.getElementsByName("destination").forEach(
+         (x) => x.addEventListener("change", validate_origin_destination)
+        );
+
+        /* Also do it when the page loads, because firefox likes to
+         * remember your selection even after the page reloads. */
+        window.addEventListener("load", validate_origin_destination);
+
+        /* Finally, we have to babysit mobile Firefox, who doesn't
+         * support HTML5 form validation going into 2026. Turn on
+         * the little form errors paragraph so we can toggle its
+         * visibility (and make it display the error) when the user
+         * makes an invalid selection. */
+        window.addEventListener("load", () => {
+          if (ua_is_mobile_ff()) {
+            const mfe = document.getElementById("marc-form-errors");
+            mfe.style.display = "block";
+          }
+        });
+      }
+
+    </script>
+  </body>
+</html>
